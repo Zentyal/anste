@@ -162,7 +162,10 @@ sub deploy # returns hash ref with the ip of each host
 
     if (not $reuse) {
         foreach my $deployer (@{$self->{deployers}}) {
-            $deployer->waitForFinish();
+            # Do not wait for hosts with raw base images
+            if ($deployer->{host}->baseImageType() ne 'raw') {
+                $deployer->waitForFinish();
+            }
             my $host = $deployer->{host}->name();
             print "[$host] Deployment finished.\n";
         }
@@ -224,15 +227,21 @@ sub _createMissingBaseImages
 
     # Tries to create all the base images, if a image
     # already exists, does nothing.
+    # Does not create raw base images
     foreach my $host (@{$scenario->hosts()}) {
-        my $image = $host->baseImage();
         my $hostname = $host->name();
-        print "[$hostname] Auto-creating base image if not exists...\n";
-        my $creator = new ANSTE::Image::Creator($image);
-        if ($creator->createImage()) {
-            print "[$hostname] Base image created.\n";
+        if ($host->baseImageType() eq 'raw') {
+            print "[$hostname] Ignoring, raw base image.\n";
         } else {
-            print "[$hostname] Base image already exists.\n";
+            my $image = $host->baseImage();
+            my $hostname = $host->name();
+            print "[$hostname] Auto-creating base image if not exists...\n";
+            my $creator = new ANSTE::Image::Creator($image);
+            if ($creator->createImage()) {
+                print "[$hostname] Base image created.\n";
+            } else {
+                print "[$hostname] Base image already exists.\n";
+            }
         }
     }
 }
